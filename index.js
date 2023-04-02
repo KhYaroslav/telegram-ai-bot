@@ -22,11 +22,31 @@ const openai = new OpenAIApi(configuration);
 
 const chats = {};
 
-const ask = async (message, chatId) => {
+const ask = async (chatId) => {
+  const user = await User.findOne({ where: { telegram_id: chatId }})
+  const question = await Question.findAll({ where: { user_id: user.id }})
+  const answer = await Answer.findAll({where: {user_id: user.id}})
+  const questionArr = question.map((el) => [{ role: 'user', content: el.question}])
+  const answerArr = answer.map((el) => [{ role: 'assistant', content: el.answer }])
+
+  function rewriteData() {
+    const data = [];
+
+    for (let i = 0; i < questionArr.length || i < answerArr.length; i++) {
+      if (questionArr[i]) {
+        data.push(questionArr[i][0]);
+      }
+      if (answerArr[i]) {
+        data.push(answerArr[i][0]);
+      }
+    }
+    return data
+  }
+  
   try {
     const response = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: message }],
+      messages: rewriteData(),
       temperature: 0.5,
       top_p: 1,
       frequency_penalty: 0,
@@ -60,6 +80,7 @@ const start = () => {
   bot.setMyCommands([
     { command: "/start", description: "Начальное приветствие" },
     { command: "/game", description: "Игра угадай число" },
+    { command: "/clear", description: "Очистить контекст" },
   ]);
 
   bot.on("message", async (msg) => {
@@ -68,25 +89,38 @@ const start = () => {
     const username = msg.from.first_name ?? msg.from.username
     
     if (text === "/start") {
-      await bot.sendMessage(
-        chatId,
-        `Привет ${username}`
-      );
       try {
         await User.create({
           username,
           telegram_id: chatId
         });
+        await bot.sendMessage(
+          chatId,
+          `Привет ${username}`
+        );
       } catch (error) {
-        bot.sendMessage(chatId, `Вы уже зарегистрировались`);
+        await bot.sendMessage(
+          chatId,
+          `Привет ${username}`
+        );
       }
-      
     } else if (text === "/game") {
       await bot.sendMessage(
         chatId,
         `Привет сейчас я загада число от 0 до 9, а вы должны его угадать`
       );
       return startGame(chatId);
+    } else if (text === "/clear") {
+      try {
+        const user = await User.findOne({ where: { telegram_id: chatId } })
+        await Question.destroy({ where: { user_id: user.id } })
+        await Answer.destroy({where: {user_id: user.id}})
+      } catch (error) {
+        await bot.sendMessage(
+          chatId,
+          `Произошла ошибка при очисти контекста`
+        );
+      }
     } else if (text) {
       await bot.sendMessage(chatId, `Ожидание...`);
       try {
@@ -96,11 +130,10 @@ const start = () => {
           user_id: user.id
         })
       } catch (error) {
-        console.log('Ошибка');
           console.log(error.message);
         }
       
-      ask(text, chatId);
+      ask(chatId);
     } else {
       return bot.sendMessage(chatId, "Такой команды нет");
     }
