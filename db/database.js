@@ -5,13 +5,16 @@ module.exports = {
     password: process.env.db_password,
     database: process.env.db_name,
     host: process.env.host,
-    dialect: process.env.dialect,
+    dialect: "postgres",
   },
   "production": {
     "username": process.env.db_user,
     "password": process.env.db_password,
     "database": process.env.db_name,
     "host": process.env.host,
-    "dialect": process.env.dialect
+    "dialect": "postgres",
+    dialectOptions: {
+      ssl: {rejectUnauthorized: false},
+    },
   }
 }
