@@ -122,27 +122,6 @@ const start = () => {
       return bot.sendMessage(chatId, 'Масимальное количество символов 4096');
     }
   });
-
-  bot.on("callback_query", async (msg) => {
-    const data = msg.data;
-    const chatId = msg.message.chat.id;
-    if (data === "/again") {
-      return startGame(chatId);
-    }
-    if (data == chats[chatId]) {
-      return bot.sendMessage(
-        chatId,
-        `Поздравляю, вы угадали чисто ${chats[chatId]}`,
-        againOptions
-      );
-    } else {
-      return bot.sendMessage(
-        chatId,
-        `К сожалению вы не угадали, бот загадал число ${chats[chatId]}`,
-        againOptions
-      );
-    }
-  });
 };
 start();
 
