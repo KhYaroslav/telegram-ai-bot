@@ -22,7 +22,8 @@ const openai = new OpenAIApi(configuration);
 
 const chats = {};
 
-const ask = async (chatId) => {
+const ask = async (chatId) => {  
+  try {
   const user = await User.findOne({ where: { telegram_id: chatId }})
   const question = await Question.findAll({ where: { user_id: user.id }})
   const answer = await Answer.findAll({where: {user_id: user.id}})
@@ -42,8 +43,7 @@ const ask = async (chatId) => {
     }
     return data
   }
-  
-  try {
+
     const response = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: rewriteData(),
@@ -52,21 +52,14 @@ const ask = async (chatId) => {
       frequency_penalty: 0,
       presence_penalty: 0,
     });
-    const answer = response.data.choices[0].message.content;
-    
-    try {
-      const user = await User.findOne({ where: { telegram_id: chatId } })
+    const result = response.data.choices[0].message.content; 
       await Answer.create({
-      answer,
+      answer: result,
       user_id: user.id
     })
-    } catch (error) {
-      console.log('Ошибка');
-    }
-    
-    return bot.sendMessage(chatId, `${answer}`);
+    return bot.sendMessage(chatId, result);
   } catch (error) {
-    return bot.sendMessage(chatId, "Произошла непредвиденная ошибка");
+    return bot.sendMessage(chatId, 'Произошла непредвиденная ошибка, используйте команду /clear');
   }
 };
 
@@ -79,7 +72,6 @@ const startGame = async (chatId) => {
 const start = () => {
   bot.setMyCommands([
     { command: "/start", description: "Начальное приветствие" },
-    { command: "/game", description: "Игра угадай число" },
     { command: "/clear", description: "Очистить контекст" },
   ]);
 
@@ -104,12 +96,6 @@ const start = () => {
           `Привет ${username}`
         );
       }
-    } else if (text === "/game") {
-      await bot.sendMessage(
-        chatId,
-        `Привет сейчас я загада число от 0 до 9, а вы должны его угадать`
-      );
-      return startGame(chatId);
     } else if (text === "/clear") {
       try {
         const user = await User.findOne({ where: { telegram_id: chatId } })
@@ -121,7 +107,7 @@ const start = () => {
           `Произошла ошибка при очисти контекста`
         );
       }
-    } else if (text) {
+    } else if (text.length < 4096) {
       await bot.sendMessage(chatId, `Ожидание...`);
       try {
         const user = await User.findOne({ where: { telegram_id: chatId } })
@@ -132,10 +118,9 @@ const start = () => {
       } catch (error) {
           console.log(error.message);
         }
-      
       ask(chatId);
     } else {
-      return bot.sendMessage(chatId, "Такой команды нет");
+      return bot.sendMessage(chatId, 'Масимальное количество символов 4096');
     }
   });
 
