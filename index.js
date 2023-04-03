@@ -1,7 +1,6 @@
 require("dotenv").config();
 const TelegramApi = require("node-telegram-bot-api");
 const { Configuration, OpenAIApi } = require("openai");
-const { gameOptions, againOptions } = require("./options");
 const express = require("express");
 const { User, Question, Answer } = require("./db/models");
 
